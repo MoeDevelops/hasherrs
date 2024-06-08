@@ -1,5 +1,5 @@
 use argon2::{
-    password_hash::{rand_core::OsRng, PasswordHash, PasswordHasher, SaltString},
+    password_hash::{rand_core::OsRng, PasswordHasher, SaltString},
     Argon2, Params,
 };
 use axum::{http::StatusCode, Json};
@@ -7,7 +7,7 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 pub struct Argon2idParameters {
-    algorithm: String,
+    algorithm: Option<String>,
     password: String,
     salt: Option<String>,
     version: u8,
@@ -20,10 +20,11 @@ pub struct Argon2idParameters {
 pub async fn hash(
     Json(parameters): Json<Argon2idParameters>,
 ) -> Result<(StatusCode, String), (StatusCode, String)> {
-    let algorithm = match parameters.algorithm.as_ref() {
-        "i" => Ok(argon2::Algorithm::Argon2i),
-        "d" => Ok(argon2::Algorithm::Argon2d),
-        "id" => Ok(argon2::Algorithm::Argon2id),
+    let algorithm = match parameters.algorithm.as_deref() {
+        Some("i") => Ok(argon2::Algorithm::Argon2i),
+        Some("d") => Ok(argon2::Algorithm::Argon2d),
+        Some("id") => Ok(argon2::Algorithm::Argon2id),
+        None => Ok(argon2::Algorithm::Argon2id),
         _ => Err((
             StatusCode::UNPROCESSABLE_ENTITY,
             "Invalid algorithm".to_string(),
@@ -39,6 +40,12 @@ pub async fn hash(
         )),
     }?;
 
+    let salt = match parameters.salt {
+        Some(salt_parameter) => SaltString::from_b64(&salt_parameter)
+            .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string())),
+        _ => Ok(SaltString::generate(&mut OsRng)),
+    }?;
+
     let argon2 = Argon2::new(
         algorithm,
         version,
@@ -51,19 +58,10 @@ pub async fn hash(
         .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?,
     );
 
-    let salt = match parameters.salt {
-        Some(salt_parameter) => SaltString::from_b64(&salt_parameter)
-            .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string())),
-        _ => Ok(SaltString::generate(&mut OsRng)),
-    }?;
-
     let password_hash = argon2
         .hash_password(parameters.password.as_bytes(), &salt)
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .to_string();
 
-    let parsed_hash = PasswordHash::new(&password_hash)
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
-
-    return Ok((StatusCode::OK, parsed_hash.to_string()));
+    return Ok((StatusCode::OK, password_hash));
 }
