@@ -38,15 +38,15 @@ pub async fn hash(
         _ => argon2,
     };
 
-    let salt = match parameters.salt {
-        Some(ref salt_parameter) => base64::prelude::BASE64_STANDARD
-            .decode(salt_parameter)
-            .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?,
-        _ => Vec::new(),
-    };
-
+    let salt: Vec<u8>;
     argon2 = match parameters.salt {
-        Some(_) => argon2.custom_salt(&salt),
+        Some(ref salt_parameter) => {
+            salt = base64::prelude::BASE64_STANDARD
+                .decode(salt_parameter)
+                .map_err(|e| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
+
+            argon2.custom_salt(&salt)
+        }
         _ => argon2,
     };
 
@@ -55,5 +55,5 @@ pub async fn hash(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?
         .to_string();
 
-    return Ok((StatusCode::OK, password_hash));
+    Ok((StatusCode::OK, password_hash))
 }

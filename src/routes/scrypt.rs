@@ -46,5 +46,5 @@ pub async fn hash(
         )
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
 
-    return Ok((StatusCode::OK, password_hash.to_string()));
+    Ok((StatusCode::OK, password_hash.to_string()))
 }
