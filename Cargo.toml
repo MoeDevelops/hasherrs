@@ -7,6 +7,6 @@ edition = "2021"
 scrypt = { version = "0.11.0", features = ["simple"] }
 axum = "0.7.5"
 serde = { version = "1.0.206", features = ["derive"] }
-tokio = { version = "1.39.2", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1.39.3", features = ["macros", "rt-multi-thread"] }
 argon2-kdf = "1.5.2"
 base64 = "0.22.1"
